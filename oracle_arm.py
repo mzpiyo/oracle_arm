@@ -9,24 +9,46 @@ import random
 import base64
 from dotenv import dotenv_values
 
+# 加载环境变量
 config = dotenv_values("/opt/oci/.env")
 
-# tg pusher config
-USE_TG = config["USE_TG"]  # 如果启用tg推送 要设置为True
-TG_BOT_TOKEN = config["TG_BOT_TOKEN"]  # 通过 @BotFather 申请获得，示例：1077xxx4424:AAFjv0FcqxxxxxxgEMGfi22B4yh15R5uw
-TG_USER_ID = config["TG_USER_ID"]  # 用户、群组或频道 ID，示例：129xxx206
-TG_API_HOST = config["TG_API_HOST"]  # 自建 API 反代地址，供网络环境无法访问时使用
+# --- 通知配置 (修改为 Gotify) ---
+# 只有当 USE_TG 为 "True" 时才开启推送
+USE_TG = config.get("USE_TG") == "True" 
+GOTIFY_URL = config.get("GOTIFY_URL")
+GOTIFY_TOKEN = config.get("GOTIFY_TOKEN")
 
 
 def telegram(desp):
-    data = (('chat_id', TG_USER_ID), ('text', '🐢甲骨文ARM抢注脚本为您播报🐢 \n\n' + desp))
-    response = requests.post('https://' + TG_API_HOST + '/bot' + TG_BOT_TOKEN +
-                             '/sendMessage',
-                             data=data)
-    if response.status_code != 200:
-        print('Telegram Bot 推送失败')
-    else:
-        print('Telegram Bot 推送成功')
+    """
+    虽然函数名叫 telegram，但内容已经改成了 Gotify 推送
+    保留函数名是为了兼容下面代码的调用，不用改动其他逻辑
+    """
+    if not USE_TG:
+        return
+
+    if not GOTIFY_URL or not GOTIFY_TOKEN:
+        print("❌ Gotify 配置缺失，跳过推送")
+        return
+
+    # 去除 URL 末尾可能的斜杠
+    base_url = GOTIFY_URL.rstrip('/')
+    url = f'{base_url}/message?token={GOTIFY_TOKEN}'
+
+    data = {
+        "title": "🐢甲骨文ARM抢注脚本🐢",
+        "message": desp,
+        "priority": 5
+    }
+
+    try:
+        response = requests.post(url, json=data, timeout=10)
+        if response.status_code == 200:
+            print('✅ Gotify 推送成功')
+        else:
+            print(f'❌ Gotify 推送失败: {response.status_code} - {response.text}')
+    except Exception as e:
+        print(f'❌ Gotify 请求发生错误: {e}')
 
 
 class OciUser:
