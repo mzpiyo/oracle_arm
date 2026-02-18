@@ -12,43 +12,62 @@ from dotenv import dotenv_values
 # 加载环境变量
 config = dotenv_values("/opt/oci/.env")
 
-# --- 通知配置 (修改为 Gotify) ---
-# 只有当 USE_TG 为 "True" 时才开启推送
+# --- 通知配置 (整合 Gotify 和 Telegram) ---
+# USE_TG 是总开关
 USE_TG = config.get("USE_TG") == "True" 
+
+# Gotify 配置
 GOTIFY_URL = config.get("GOTIFY_URL")
 GOTIFY_TOKEN = config.get("GOTIFY_TOKEN")
+
+# Telegram 配置 (新增)
+TG_BOT_TOKEN = config.get("TG_BOT_TOKEN")
+TG_CHAT_ID = config.get("TG_CHAT_ID")
 
 
 def telegram(desp):
     """
-    虽然函数名叫 telegram，但内容已经改成了 Gotify 推送
-    保留函数名是为了兼容下面代码的调用，不用改动其他逻辑
+    统一推送函数：同时支持 Gotify 和 Telegram
     """
     if not USE_TG:
         return
 
-    if not GOTIFY_URL or not GOTIFY_TOKEN:
-        print("❌ Gotify 配置缺失，跳过推送")
-        return
+    # 1. 发送 Gotify
+    if GOTIFY_URL and GOTIFY_TOKEN:
+        try:
+            base_url = GOTIFY_URL.rstrip('/')
+            url = f'{base_url}/message?token={GOTIFY_TOKEN}'
+            data = {
+                "title": "🐢甲骨文ARM抢注通知🐢",
+                "message": desp,
+                "priority": 5
+            }
+            resp = requests.post(url, json=data, timeout=10)
+            if resp.status_code == 200:
+                print('✅ Gotify 推送成功')
+            else:
+                print(f'❌ Gotify 推送失败: {resp.text}')
+        except Exception as e:
+            print(f'❌ Gotify 请求错误: {e}')
 
-    # 去除 URL 末尾可能的斜杠
-    base_url = GOTIFY_URL.rstrip('/')
-    url = f'{base_url}/message?token={GOTIFY_TOKEN}'
-
-    data = {
-        "title": "🐢甲骨文ARM抢注脚本🐢",
-        "message": desp,
-        "priority": 5
-    }
-
-    try:
-        response = requests.post(url, json=data, timeout=10)
-        if response.status_code == 200:
-            print('✅ Gotify 推送成功')
-        else:
-            print(f'❌ Gotify 推送失败: {response.status_code} - {response.text}')
-    except Exception as e:
-        print(f'❌ Gotify 请求发生错误: {e}')
+    # 2. 发送 Telegram (新增逻辑)
+    if TG_BOT_TOKEN and TG_CHAT_ID:
+        try:
+            url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
+            # 给消息加个标题头，并处理换行
+            tg_text = f"🐢 *甲骨文ARM抢注通知*\n\n{desp}"
+            params = {
+                "chat_id": TG_CHAT_ID,
+                "text": tg_text,
+                "parse_mode": "Markdown"
+            }
+            resp = requests.post(url, data=params, timeout=10)
+            if resp.status_code == 200:
+                print('✅ Telegram 推送成功')
+            else:
+                print(f'❌ Telegram 推送失败: {resp.text}')
+        except Exception as e:
+            print(f'❌ Telegram 请求错误: {e}')
 
 
 class OciUser:
@@ -245,7 +264,7 @@ class InsCreate:
     def create(self):
         # print("已运行创建活动")
         # 开启一个tg的原始推送
-        text = "脚本开始启动:\n,区域:{}-实例:{},CPU:{}C-内存:{}G-硬盘:{}G的小🐔已经快马加鞭抢购了\n".format(
+        text = "脚本开始启动:\n区域:{}\n实例:{}\nCPU:{}C\n内存:{}G\n硬盘:{}G\n小🐔已经快马加鞭抢购了".format(
             self.tf.availability_domain, self.tf.display_name, self.tf.ocpus,
             self.tf.memory_in_gbs, self.tf.boot_volume_size_in_gbs)
         telegram(text)
