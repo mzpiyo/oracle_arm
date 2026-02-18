@@ -9,6 +9,9 @@
 USE_TG=True
 GOTIFY_URL=[https://push.example.com](https://push.example.com)
 GOTIFY_TOKEN=A1b2C3d4E5
+
+TG_BOT_TOKEN=""
+TG_CHAT_ID=""
 ```
 
 * `USE_TG=True`: 启用通知推送总开关（True 为开启，False 为关闭）。
