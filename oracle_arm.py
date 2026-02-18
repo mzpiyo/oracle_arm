@@ -321,7 +321,7 @@ class InsCreate:
                 self.try_count += 1
                 count_text = "抢注中，已经经过:{}尝试".format(self.try_count)
                 print(count_text)
-                if self.try_count % 2000 == 0:
+                if self.try_count % 5000 == 0:
                     telegram(count_text)
 
     def check_public_ip(self):
